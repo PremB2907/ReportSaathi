@@ -1,0 +1,17 @@
+# Virtual Environment
+venv/
+.venv/
+env/
+__pycache__/
+*.pyc
+
+# Local Environment Secrets
+.env
+.env.local
+
+# IDE configurations
+.idea/
+.vscode/
+
+# OS files
+.DS_Store

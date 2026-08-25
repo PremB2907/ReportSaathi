@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="ReportSaathi translates complex laboratory medical reports into simple everyday language. English, Hindi, and Marathi spoken explanations.">
+  <title>ReportSaathi - Your Medical Report in Human Language</title>
+  <link rel="stylesheet" href="/app/static/css/main.css">
+</head>
+<body>
+
+  <!-- Accessibility Font Scale Bar -->
+  <div class="accessibility-bar" role="region" aria-label="Accessibility settings">
+    <div class="container acc-container">
+      <div class="acc-group">
+        <span>FONT SIZE / अक्षर आकार:</span>
+        <button id="font-btn-normal" class="acc-btn active" onclick="setAccessibilityFont('normal')" aria-label="Standard Font Size">A</button>
+        <button id="font-btn-large" class="acc-btn" onclick="setAccessibilityFont('large')" aria-label="Large Font Size">A+</button>
+        <button id="font-btn-xlarge" class="acc-btn" onclick="setAccessibilityFont('xlarge')" aria-label="Extra Large Font Size">A++</button>
+      </div>
+      <div class="acc-group">
+        <span>PREFER REDUCED MOTION / कमी हालचाल:</span>
+        <button id="motion-btn" class="acc-btn" onclick="toggleReducedMotion()" aria-label="Toggle Reduced Motion">OFF</button>
+      </div>
+      <div class="acc-group">
+        <button onclick="shutdownLocalServer()" class="acc-btn" style="background-color:var(--red); color:white; border-color:var(--black); font-weight:800;" aria-label="Stop Local Server Port 5000">🔌 STOP PORT 5000</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Header Navigation -->
+  <header>
+    <div class="container nav-container">
+      <a href="/" class="logo" id="main-logo" aria-label="ReportSaathi Home">
+        📄 REPORT <span class="logo-badge">SAATHI</span>
+      </a>
+      <div class="nav-actions">
+        <!-- Language selector dropdown inside header -->
+        <select id="header-lang-selector" onchange="changeGlobalLanguage(this.value)" aria-label="Select explanation language">
+          <option value="english">English</option>
+          <option value="hindi">हिंदी (Hindi)</option>
+          <option value="marathi">मराठी (Marathi)</option>
+        </select>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="hero" id="hero-section">
+    <div class="container">
+      <h1>YOUR REPORT.<br>FINALLY IN<br>HUMAN LANGUAGE.</h1>
+      <p class="hero-subtitle">
+        Take a photo or upload your blood/urine laboratory reports. We will explain what they mean in plain words in English, Hindi, or Marathi.
+      </p>
+      <div class="hero-ctas">
+        <a href="#input-section" class="btn btn-yellow">📸 UNDERSTAND MY REPORT</a>
+        <button class="btn btn-blue" onclick="playDemoVoice()">🔊 HEAR A SAMPLE</button>
+      </div>
+      <div class="trust-line">
+        🛡️ AI-assisted • Doctor-informed • Strictly not a medical diagnosis
+      </div>
+    </div>
+  </section>
+
+  <!-- Main Container -->
+  <main class="container">
+
+    <!-- Landing Page Story Grid -->
+    <section class="card" id="story-section">
+      <div class="card-title">HOW IT WORKS / हे कसे काम करते</div>
+      <div class="flow-steps">
+        <div class="step-card">
+          <div class="step-num">1</div>
+          <h3>UPLOAD PHOTO</h3>
+          <p>Take a clear picture of your medical lab report from your phone or select report images.</p>
+        </div>
+        <div class="step-card">
+          <div class="step-num">2</div>
+          <h3>AI CONVERTS</h3>
+          <p>Our secure system extracts test values, compares laboratory ranges, and translates jargon.</p>
+        </div>
+        <div class="step-card">
+          <div class="step-num">3</div>
+          <h3>KNOW WHAT TO DO</h3>
+          <p>Read explanations, listen to voice notes, find nearby physicians, and compile visit queries.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- User Input Panel Section -->
+    <section class="card" id="input-section">
+      <div class="card-title">START HERE / येथे सुरू करा</div>
+
+      <!-- Language selector buttons -->
+      <label class="sheet-title-small" style="display:block; margin-bottom: 0.5rem;">How would you like this explained? / भाषा निवडा:</label>
+      <div class="lang-selector">
+        <button type="button" class="btn btn-sm btn-lang" id="lang-english" onclick="selectLanguage('english')">English</button>
+        <button type="button" class="btn btn-sm btn-lang" id="lang-hindi" onclick="selectLanguage('hindi')">हिंदी</button>
+        <button type="button" class="btn btn-sm btn-lang" id="lang-marathi" onclick="selectLanguage('marathi')">मराठी</button>
+      </div>
+
+      <!-- Optional Demographic Context -->
+      <div class="flow-steps" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top:0; margin-bottom: 1.5rem;">
+        <div>
+          <label for="patient-age" style="font-weight: 800; display:block; margin-bottom:0.25rem;">Patient Age (Optional):</label>
+          <input type="number" id="patient-age" min="1" max="120" placeholder="e.g. 45" style="width:100%; border:3px solid var(--black); padding:0.5rem; font-weight:800;">
+        </div>
+        <div>
+          <label for="patient-sex" style="font-weight: 800; display:block; margin-bottom:0.25rem;">Patient Sex (Optional):</label>
+          <select id="patient-sex" style="width:100%; border:3px solid var(--black); padding:0.5rem; font-weight:800;">
+            <option value="">Select sex</option>
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Symptoms Checkboxes -->
+      <label class="sheet-title-small" style="display:block; margin-bottom:0.5rem;">Are you experiencing any symptoms? (Select all that apply):</label>
+      <div class="symptom-grid" id="symptoms-container">
+        <div class="symptom-card" data-symptom="Fever" onclick="toggleSymptom(this)">
+          <span class="symptom-icon">🔥</span> Fever
+        </div>
+        <div class="symptom-card" data-symptom="Burning while urinating" onclick="toggleSymptom(this)">
+          <span class="symptom-icon">💧</span> Burning Urination
+        </div>
+        <div class="symptom-card" data-symptom="Frequent urination" onclick="toggleSymptom(this)">
+          <span class="symptom-icon">🚽</span> Frequent Toilet
+        </div>
+        <div class="symptom-card" data-symptom="Pain" onclick="toggleSymptom(this)">
+          <span class="symptom-icon">😣</span> Body Pain
+        </div>
+        <div class="symptom-card" data-symptom="Weakness" onclick="toggleSymptom(this)">
+          <span class="symptom-icon">😴</span> Weakness
+        </div>
+        <div class="symptom-card" data-symptom="Vomiting" onclick="toggleSymptom(this)">
+          <span class="symptom-icon">🤢</span> Vomiting
+        </div>
+        <div class="symptom-card" data-symptom="Bleeding" onclick="toggleSymptom(this)">
+          <span class="symptom-icon">🩸</span> Bleeding
+        </div>
+        <div class="symptom-card" data-symptom="No symptoms" id="symptom-none" onclick="clearSymptoms(this)">
+          <span class="symptom-icon">😶</span> None
+        </div>
+      </div>
+
+      <!-- Interactive File Uploader -->
+      <input type="file" id="report-file-input" multiple accept="image/png, image/jpeg, image/jpg, image/webp" style="display: none;" onchange="handleFileSelect(event)">
+      <div class="upload-zone" id="drop-zone" onclick="document.getElementById('report-file-input').click()" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)" role="button" tabindex="0" aria-label="Upload report photos">
+        <span class="upload-icon">📸</span>
+        <h3>Click here or drag report photos</h3>
+        <p>Supports multiple pages (PNG, JPG, JPEG, WEBP up to 10MB total)</p>
+        <div id="file-preview-container" style="display:flex; gap: 0.5rem; margin-top: 1rem; flex-wrap: wrap;"></div>
+      </div>
+
+      <div class="hero-ctas" style="margin-bottom:0;">
+        <button type="button" class="btn btn-yellow" id="analyze-btn" onclick="submitAnalysis()">📸 UNDERSTAND MY REPORT</button>
+        <button type="button" class="btn btn-blue" id="demo-btn" onclick="submitDemoAnalysis()">🧪 TRY A SAMPLE REPORT</button>
+      </div>
+      <p style="text-align: center; margin-top: 0.75rem; font-weight: 800; font-size: 0.85rem; color: #555;">
+        ⚠️ DEMO DATA is synthetic. Uploading reports is secure and doesn't store files permanently.
+      </p>
+    </section>
+
+    <!-- Loading Screen Pipeline Overlay -->
+    <div class="loading-overlay" id="loading-overlay" style="display:none;" aria-live="assertive">
+      <div class="pipeline-list">
+        <h2 style="margin-bottom:1.5rem; text-transform:uppercase;">⏳ READING REPORT...</h2>
+        <li class="pipeline-item" id="pipe-1"><span class="status-bullet"></span> 📷 Checking report photos...</li>
+        <li class="pipeline-item" id="pipe-2"><span class="status-bullet"></span> 🔎 Identifying test values...</li>
+        <li class="pipeline-item" id="pipe-3"><span class="status-bullet"></span> 🧠 AI translation engine...</li>
+        <li class="pipeline-item" id="pipe-4"><span class="status-bullet"></span> 🩺 Safety range check...</li>
+        <li class="pipeline-item" id="pipe-5"><span class="status-bullet"></span> 📊 Finalizing explanation...</li>
+      </div>
+    </div>
+
+    <!-- Error Alert Widget -->
+    <div class="card btn-red" id="error-card" style="display:none; color:black;">
+      <h3 style="text-transform: uppercase;">⚠️ Something went wrong</h3>
+      <p id="error-message">Error details go here.</p>
+    </div>
+
+    <!-- Results Section Dashboard -->
+    <div id="results-section" style="display:none;">
+
+      <!-- Urgent / Warning screen (rendered dynamic if needed) -->
+      <div class="emergency-screen" id="emergency-alert-box" style="display:none;">
+        <h2>🚨 PLEASE GET MEDICAL HELP</h2>
+        <p id="emergency-desc-text">Some findings in your report or severe symptoms require urgent professional clinical assessment.</p>
+        <p style="font-weight: 900; text-decoration: underline;">Please contact your local emergency service or visit the nearest hospital emergency department.</p>
+      </div>
+
+      <!-- Giant Overall Status Banner -->
+      <div class="status-banner" id="status-banner-box">
+        <h2 id="overall-status-headline">🟢 MOST RESULTS LOOK WITHIN RANGE</h2>
+        <p id="overall-status-notice">Nothing in the uploaded report obviously indicates an emergency based on the values read.</p>
+      </div>
+
+      <!-- Strict Medical Safety Disclaimer -->
+      <div class="card" style="background-color:#fff3cd; border-color:#ffeeba; font-weight:800; font-size:0.95rem;">
+        🛡️ MEDICAL SAFETY DISCLAIMER:<br>
+        <span id="disclaimer-text">ReportSaathi provides educational information from the uploaded report. It does not replace a qualified healthcare professional. Do not start, stop, or modify prescription medicines.</span>
+      </div>
+
+      <!-- Main Dashboard Grid layout -->
+      <div class="dashboard-grid">
+        
+        <!-- Left Column: Test Explanations and Tables -->
+        <div>
+          <!-- Storyboard / Summary Story View -->
+          <div class="card">
+            <div class="card-title">REPORT STORY / अहवाल कथा</div>
+            <p style="font-weight:800; margin-bottom:1rem;" id="story-headline-txt">Loading storyboard...</p>
+            <div class="story-panel" id="storyboard-panel">
+              <!-- storyboard items loaded dynamically -->
+            </div>
+            
+            <!-- Explain to parents toggle button -->
+            <div style="margin-top:1.5rem; text-align: center;">
+              <button class="btn btn-purple" id="parents-explain-btn" onclick="explainToParents()">👴 EXPLAIN THIS TO MY PARENTS</button>
+            </div>
+            <div id="parents-translation-box" class="card btn-yellow" style="display:none; margin-top:1rem; color:black;">
+              <div class="card-title">👵 FOR PARENTS / पालकांसाठी</div>
+              <p style="font-size:1.15rem; font-weight:800;" id="parents-translation-text"></p>
+            </div>
+          </div>
+
+          <!-- Main Parameter Explanations (Cards/Table) -->
+          <div class="card">
+            <div class="card-title">EXTRACTED LAB TESTS / प्रयोगशाळा तपासणी</div>
+            
+            <!-- Standard Desktop Table -->
+            <div class="table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Test Parameter</th>
+                    <th>Your Result</th>
+                    <th>Lab range</th>
+                    <th>Status</th>
+                    <th>Explanation & Audio</th>
+                  </tr>
+                </thead>
+                <tbody id="tests-table-body">
+                  <!-- table rows loaded dynamically -->
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Mobile test cards (rendered instead of table on phone) -->
+            <div class="mobile-test-list" id="tests-mobile-body">
+              <!-- mobile test cards loaded dynamically -->
+            </div>
+          </div>
+
+          <!-- Ask Your Report Conversational Box -->
+          <div class="card">
+            <div class="card-title">💬 ASK YOUR REPORT / शंका विचारा</div>
+            <p style="margin-bottom: 1rem; font-weight:600;">Ask questions about your parsed values (e.g., "Why is hemoglobin done?").</p>
+            
+            <div class="chat-messages" id="chat-messages-container">
+              <div class="chat-bubble chat-assistant">
+                Hello! I can explain parameters from this report. Ask me anything.
+              </div>
+            </div>
+
+            <div class="chat-input-wrapper">
+              <input type="text" class="chat-input" id="chat-user-input" placeholder="Type question in English, Hindi, or Marathi..." onkeydown="if(event.key === 'Enter') sendChatMessage()">
+              <button class="btn btn-sm btn-yellow" onclick="sendChatMessage()" aria-label="Send message">💬 SEND</button>
+              <button class="btn btn-sm btn-blue" id="mic-chat-btn" onclick="triggerVoiceInput()" aria-label="Talk with voice">🎙️ SPEAK</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Column: Doctor finder, Action plan, Share card -->
+        <div>
+          <!-- What Should I Do Now panel -->
+          <div class="card">
+            <div class="card-title">🩺 ACTION PLAN / आता काय करावे</div>
+            
+            <div style="margin-bottom:1rem;">
+              <span class="badge badge-normal">🟢 NOW / आता</span>
+              <p style="margin-top:0.25rem; font-weight:800;" id="action-now-txt"></p>
+            </div>
+
+            <div style="margin-bottom:1rem;">
+              <span class="badge badge-discuss">🔵 DOCTOR / डॉक्टर</span>
+              <p style="margin-top:0.25rem; font-weight:800;" id="action-doctor-txt"></p>
+            </div>
+
+            <div style="margin-bottom:0.5rem;">
+              <span class="badge badge-urgent">🔴 DON'T WAIT / थांबू नका</span>
+              <p style="margin-top:0.25rem; font-weight:800;" id="action-urgent-txt"></p>
+            </div>
+          </div>
+
+          <!-- Doctor Recommendations Panel -->
+          <div class="card">
+            <div class="card-title">👨‍⚕️ SUGGESTED SPECIALIST</div>
+            <div style="background-color:var(--blue); border:3px solid var(--black); padding:1rem; font-weight:800; margin-bottom: 1rem;">
+              🧑‍⚕️ Specialty: <span id="recommend-specialty-txt">General Physician</span>
+            </div>
+            <p id="recommend-reason-txt" style="font-weight:600;"></p>
+          </div>
+
+          <!-- Nearby Doctor Locator Map Widget -->
+          <div class="card">
+            <div class="card-title">📍 FIND CLINICS / दवाखाने शोधा</div>
+            <p style="margin-bottom: 1rem; font-weight:600;">We can list verified physicians near you. Location is kept private.</p>
+            
+            <div id="location-query-box">
+              <div class="hero-ctas" style="margin-bottom: 1rem; justify-content: start; gap:0.5rem;">
+                <button class="btn btn-sm btn-green" onclick="requestLocationAccess()">🗺️ ALLOW LOCATION</button>
+                <button class="btn btn-sm btn-blue" onclick="showManualLocationInput()">🏢 ENTER AREA MANUALLY</button>
+              </div>
+              <div id="manual-location-input" style="display:none; margin-bottom:1rem;">
+                <label for="city-input-field" style="font-weight:800; display:block; margin-bottom:0.25rem;">Enter city name (e.g. Pune, Mumbai):</label>
+                <div style="display:flex; gap:0.5rem;">
+                  <input type="text" id="city-input-field" placeholder="e.g. Pune" style="border:3px solid var(--black); padding:0.4rem; font-weight:800; flex-grow:1;">
+                  <button class="btn btn-sm btn-yellow" onclick="findDoctorsByCity()">FIND</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- List of Doctors Loaded Here -->
+            <div id="nearby-clinics-list" style="max-height: 350px; overflow-y:auto; display:flex; flex-direction:column; gap:1rem; margin-top:1rem;">
+              <!-- clinics will populate dynamically -->
+            </div>
+          </div>
+
+          <!-- Compare Reports Widget -->
+          <div class="card">
+            <div class="card-title">⚖️ COMPARE / तुलना करा</div>
+            <p style="margin-bottom: 1rem; font-weight: 600;">Upload an older report to compare changes over time.</p>
+            <input type="file" id="compare-file-input" accept="image/png, image/jpeg, image/jpg, image/webp" style="display:none;" onchange="handleCompareFileSelect(event)">
+            <button class="btn btn-sm btn-purple" onclick="document.getElementById('compare-file-input').click()">📁 CHOOSE OLDER REPORT</button>
+            
+            <div id="compare-results-box" style="margin-top:1rem; display:none;">
+              <!-- compare results load dynamically -->
+            </div>
+          </div>
+
+          <!-- Doctor visit companion summary sheet -->
+          <div class="card" style="padding:1rem;">
+            <button class="btn btn-yellow" style="width:100%;" onclick="openConsultationSummary()">📝 PREPARE VISIT COMPANION</button>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- Consultation visit card dialog (Modal overlay) -->
+    <div id="summary-modal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background-color:rgba(0,0,0,0.6); z-index:1000; justify-content:center; align-items:center; overflow-y:auto; padding:2rem;">
+      <div style="max-width: 650px; width: 100%; background: white; border: var(--border-width) solid var(--black); box-shadow: var(--shadow-offset) var(--shadow-offset) 0px var(--black); padding: 1.5rem; position: relative;">
+        <button onclick="closeConsultationSummary()" style="position:absolute; top: 10px; right: 10px; border:2px solid var(--black); background: var(--red); font-weight:800; cursor:pointer; padding:2px 8px;">X</button>
+        
+        <div class="visit-sheet" id="print-sheet-area">
+          <div class="sheet-header">
+            <h2>REPORTSAATHI CONSULTATION AID</h2>
+            <p>Share this summary sheet directly with your doctor</p>
+          </div>
+
+          <div class="sheet-section">
+            <div class="sheet-title-small">👤 Patient details:</div>
+            <p><strong>Age:</strong> <span id="sheet-age">--</span> | <strong>Sex:</strong> <span id="sheet-sex">--</span></p>
+            <p><strong>Report:</strong> <span id="sheet-report-type">--</span></p>
+          </div>
+
+          <div class="sheet-section">
+            <div class="sheet-title-small">⚠️ Flagged Test Parameters:</div>
+            <div id="sheet-flagged-tests-list">
+              <!-- list of abnormal values -->
+            </div>
+          </div>
+
+          <div class="sheet-section">
+            <div class="sheet-title-small">🤒 Reported Symptoms:</div>
+            <p id="sheet-symptoms-list">None</p>
+          </div>
+
+          <div class="sheet-section">
+            <div class="sheet-title-small">❓ Suggested Questions to ask:</div>
+            <ul id="sheet-questions-list" style="padding-left:1.25rem;">
+              <!-- questions list -->
+            </ul>
+          </div>
+
+          <div class="sheet-section" style="border-bottom:none;">
+            <div class="sheet-title-small">✏️ Custom Patient Notes:</div>
+            <textarea id="sheet-user-notes" placeholder="Write any specific notes or questions you want to ask..." style="width:100%; height:80px; border:2px solid var(--black); padding:0.5rem; font-family:inherit;"></textarea>
+          </div>
+
+          <div style="font-size:0.75rem; text-align:center; color:#555; border-top:1px solid #ddd; padding-top:0.5rem; margin-top:1rem;">
+            *Prepared securely via ReportSaathi. This is a communication companion tool.
+          </div>
+        </div>
+
+        <div style="display:flex; gap:1rem; margin-top:1rem; justify-content:end;">
+          <button class="btn btn-sm btn-green" onclick="window.print()">🖨️ PRINT SUMMARY</button>
+          <button class="btn btn-sm btn-red" onclick="closeConsultationSummary()">CLOSE</button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- PWA Install Prompt Banner -->
+  <div id="pwa-install-banner" class="card btn-purple" style="display:none; position:fixed; bottom:15px; left:15px; right:15px; z-index:999; margin:0; flex-direction:row; justify-content:space-between; align-items:center; color:black;">
+    <div>
+      <strong>✨ Install ReportSaathi!</strong>
+      <p style="font-size:0.9rem;">Add to Home Screen for fast, offline accessibility.</p>
+    </div>
+    <div style="display:flex; gap:0.5rem;">
+      <button class="btn btn-sm btn-yellow" onclick="installPWA()">INSTALL</button>
+      <button class="btn btn-sm" onclick="dismissPWAInstall()">NOT NOW</button>
+    </div>
+  </div>
+
+  <script src="/app/static/js/theme.js"></script>
+  <script src="/app/static/js/voice.js"></script>
+  <script src="/app/static/js/location.js"></script>
+  <script src="/app/static/js/api.js"></script>
+  <script src="/app/static/js/app.js"></script>
+
+  <!-- Service Worker registration for PWA -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/app/static/sw.js')
+          .then(reg => console.log('Service Worker Registered!'))
+          .catch(err => console.log('Service Worker Registration Failed:', err));
+      });
+    }
+  </script>
+</body>
+</html>
