@@ -387,6 +387,125 @@ def test_provider():
             "error": str(e)
         }), 500
 
+@app.route('/api/ai/test-real', methods=['GET'])
+def test_real_diagnostic():
+    """
+    Validates the complete execution flow through Groq:
+    1. Endpoint reachability
+    2. API Authentication via /v1/models query
+    3. Tiny completion request to Groq chat
+    4. Vision extraction request using a tiny synthetic 10x10 PNG
+    5. Schema check on extracted JSON
+    6. Safety engine validation
+    Ensures zero exposure of API keys.
+    """
+    import time
+    import io
+    import base64
+    from PIL import Image
+
+    is_enabled = os.environ.get("ADMIN_DIAGNOSTICS", "false").lower() == "true"
+    if not is_enabled:
+        return jsonify({"success": False, "error": "Access Denied: Diagnostics page is disabled."}), 403
+
+    status = {
+        "endpoint": "ok",
+        "groq_auth": "failed",
+        "groq_text": "failed",
+        "groq_vision": "failed",
+        "json_parsing": "failed",
+        "safety_validation": "failed",
+        "timings": {
+            "image_processing_ms": 0,
+            "groq_request_ms": 0,
+            "validation_ms": 0,
+            "total_ms": 0
+        }
+    }
+
+    start_total = time.time()
+
+    # Get groq provider instance from ai_manager
+    groq_provider = ai_manager.get_provider("groq")
+    if not groq_provider:
+        return jsonify({"success": False, "error": "Groq provider not initialized in ProviderManager"}), 500
+
+    # 1. Test Auth (check_health)
+    try:
+        health_info = groq_provider.check_health()
+        if health_info.get("available"):
+            status["groq_auth"] = "ok"
+        else:
+            status["groq_auth"] = f"failed: {health_info.get('reason')}"
+    except Exception as e:
+        status["groq_auth"] = f"failed: {str(e)}"
+
+    # 2. Test Groq Text Connection
+    try:
+        res = groq_provider.test_connection()
+        if res:
+            status["groq_text"] = "ok"
+    except Exception as e:
+        status["groq_text"] = f"failed: {str(e)}"
+
+    # 3. Create a tiny synthetic image & base64 encode it
+    start_img = time.time()
+    try:
+        img = Image.new('RGB', (10, 10), color = 'white')
+        img_byte_arr = io.BytesIO()
+        img.save(img_byte_arr, format='JPEG', quality=85)
+        img_bytes = img_byte_arr.getvalue()
+        b64_data = base64.b64encode(img_bytes).decode('utf-8')
+        
+        synthetic_image_payload = [{
+            "base64": b64_data,
+            "mime_type": "image/jpeg",
+            "width": 10,
+            "height": 10,
+            "size_bytes": len(img_bytes)
+        }]
+        status["timings"]["image_processing_ms"] = int((time.time() - start_img) * 1000)
+    except Exception as e:
+        return jsonify({"success": False, "error": f"Failed during image preprocessing stage: {str(e)}"}), 500
+
+    # 4. Test vision API request and record exact response timing
+    start_groq = time.time()
+    raw_response = None
+    try:
+        raw_response = groq_provider.analyze_report(
+            images=synthetic_image_payload,
+            language="english",
+            symptoms=[],
+            patient_context={}
+        )
+        status["groq_vision"] = "ok"
+    except Exception as e:
+        status["groq_vision"] = f"failed: {str(e)}"
+    
+    status["timings"]["groq_request_ms"] = int((time.time() - start_groq) * 1000)
+
+    # 5. Schema check on extracted JSON
+    if status["groq_vision"] == "ok" and isinstance(raw_response, dict):
+        if "tests" in raw_response and "overall_summary" in raw_response:
+            status["json_parsing"] = "ok"
+        else:
+            status["json_parsing"] = f"failed: Missing expected keys"
+
+    # 6. Safety engine validation
+    start_val = time.time()
+    if status["json_parsing"] == "ok":
+        try:
+            validated_response = validate_and_sanitize_report(raw_response)
+            if validated_response and "disclaimer" in validated_response:
+                status["safety_validation"] = "ok"
+        except Exception as e:
+            status["safety_validation"] = f"failed: {str(e)}"
+
+    status["timings"]["validation_ms"] = int((time.time() - start_val) * 1000)
+    status["timings"]["total_ms"] = int((time.time() - start_total) * 1000)
+
+    return jsonify(status)
+
 # For running locally
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

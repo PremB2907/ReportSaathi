@@ -151,5 +151,29 @@ class TestReportSaathi(unittest.TestCase):
         data = json.loads(response.data)
         self.assertIn("ai_configured", data)
 
+    def test_route_test_real_disabled(self):
+        with unittest.mock.patch.dict(os.environ, {"ADMIN_DIAGNOSTICS": "false"}):
+            response = self.app.get('/api/ai/test-real')
+            self.assertEqual(response.status_code, 403)
+
+    def test_route_test_real_enabled_mock(self):
+        # Patch the actual call to avoid hitting the live API during local tests
+        with unittest.mock.patch.dict(os.environ, {"ADMIN_DIAGNOSTICS": "true"}):
+            with unittest.mock.patch('app.services.ai.groq_provider.GroqProvider.check_health', return_value={"available": True}):
+                with unittest.mock.patch('app.services.ai.groq_provider.GroqProvider.test_connection', return_value="hello"):
+                    with unittest.mock.patch('app.services.ai.groq_provider.GroqProvider.analyze_report', return_value={
+                        "tests": [],
+                        "overall_summary": {"status_level": "normal", "headline": "Test", "bullets": []}
+                    }):
+                        response = self.app.get('/api/ai/test-real')
+                        self.assertEqual(response.status_code, 200)
+                        data = json.loads(response.data)
+                        self.assertEqual(data["endpoint"], "ok")
+                        self.assertEqual(data["groq_auth"], "ok")
+                        self.assertEqual(data["groq_text"], "ok")
+                        self.assertEqual(data["groq_vision"], "ok")
+                        self.assertEqual(data["json_parsing"], "ok")
+                        self.assertEqual(data["safety_validation"], "ok")
+
 if __name__ == '__main__':
     unittest.main()
