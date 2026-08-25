@@ -6,6 +6,16 @@ let currentReport = null;
 let olderReport = null;
 let chatHistory = [];
 
+// Hide local server shutdown utility in production
+document.addEventListener('DOMContentLoaded', () => {
+  if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+    const container = document.getElementById('shutdown-btn-container');
+    if (container) {
+      container.style.display = 'none';
+    }
+  }
+});
+
 // Drag and drop events
 function onDragOver(e) {
   e.preventDefault();
